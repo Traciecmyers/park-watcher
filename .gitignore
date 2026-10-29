@@ -1,0 +1,5 @@
+# Keep the watch list (your travel dates/places) and alert memory out of the repo.
+watchlist.yaml
+state.json
+__pycache__/
+.venv/
