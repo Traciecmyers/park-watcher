@@ -9,6 +9,10 @@ on:
         description: "Send a test Telegram message instead of checking"
         type: boolean
         default: false
+      debug:
+        description: "Print error details (logs are public)"
+        type: boolean
+        default: false
 
 concurrency:
   group: park-watcher
@@ -41,6 +45,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WATCHLIST_YAML: ${{ secrets.WATCHLIST_YAML }}
+          DEBUG: ${{ inputs.debug && '1' || '0' }}
         run: |
           if [ "${{ inputs.test }}" = "true" ]; then
             python watcher.py --test
