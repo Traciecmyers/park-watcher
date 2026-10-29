@@ -201,7 +201,8 @@ def telegram(text: str) -> None:
         timeout=20,
     )
     if r.status_code != 200:
-        log(f"Telegram error {r.status_code}")
+        hint = {404: "bot token is wrong", 401: "bot token was revoked", 400: "chat ID is wrong or you haven't messaged the bot", 403: "you blocked the bot or haven't pressed Start"}.get(r.status_code, "")
+        log(f"Telegram error {r.status_code} {hint}")
 
 
 def fmt_day(d: dt.date) -> str:
@@ -263,6 +264,8 @@ def run(watchlist_path: str | None = None) -> int:
             # A bad lookup is cached as failed; retry resolution next time.
             state["resolved"].pop(eid, None)
             log(f"[{i}/{len(entries)}] check failed ({type(exc).__name__}), streak {n}")
+            if os.environ.get("DEBUG") == "1":
+                log(f"    {eid}: {str(exc)[:400]}")
             if n == FAILURE_ALERT_AFTER and not state["warned"].get(eid):
                 telegram(
                     f"⚠️ Park Watcher can't check <b>{html.escape(entry['name'])}</b> "
