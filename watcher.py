@@ -184,12 +184,13 @@ def search(entry: dict[str, Any], ids: dict[str, Any]) -> list[Any]:
 # --------------------------------------------------------------------------- #
 # Alerts
 # --------------------------------------------------------------------------- #
-def telegram(text: str) -> None:
+def telegram(text: str) -> bool:
+    """Send a message; return True only if Telegram accepted it."""
     if not (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
         log("Telegram not configured; would have sent a message.")
         if not QUIET:
             print(text)
-        return
+        return False
     r = requests.post(
         f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
         json={
@@ -203,6 +204,8 @@ def telegram(text: str) -> None:
     if r.status_code != 200:
         hint = {404: "bot token is wrong", 401: "bot token was revoked", 400: "chat ID is wrong or you haven't messaged the bot", 403: "you blocked the bot or haven't pressed Start"}.get(r.status_code, "")
         log(f"Telegram error {r.status_code} {hint}")
+        return False
+    return True
 
 
 def fmt_day(d: dt.date) -> str:
@@ -291,7 +294,12 @@ def run(watchlist_path: str | None = None) -> int:
         log(f"[{i}/{len(entries)}] ok: {len(sites)} open, {len(new)} new")
         if new:
             total_new += len(new)
-            telegram(build_alert(entry, new))
+            if not telegram(build_alert(entry, new)):
+                # Not delivered: forget these so the next run tries again.
+                for s in new:
+                    state["seen"].pop(
+                        f"{entry['provider']}|{s.facility_id}|{s.campsite_id}|{s.booking_date.date()}", None
+                    )
         state["warned"].pop(eid, None)
         time.sleep(1.5)  # be polite to the reservation sites
 
