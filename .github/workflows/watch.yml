@@ -1,0 +1,56 @@
+name: Park Watcher
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 min (GitHub may run it 5–15 min apart when busy)
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a test Telegram message instead of checking"
+        type: boolean
+        default: false
+
+concurrency:
+  group: park-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -q -r requirements.txt
+
+      - name: Restore memory of alerts already sent
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: watch-state-${{ github.run_id }}
+          restore-keys: watch-state-
+
+      - name: Check parks
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          WATCHLIST_YAML: ${{ secrets.WATCHLIST_YAML }}
+        run: |
+          if [ "${{ inputs.test }}" = "true" ]; then
+            python watcher.py --test
+          else
+            python watcher.py
+          fi
+
+      - name: Save memory of alerts already sent
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: watch-state-${{ github.run_id }}
